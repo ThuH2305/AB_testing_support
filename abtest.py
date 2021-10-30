@@ -3,26 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from statsmodels.stats.proportion import proportions_ztest
-from scipy.stats import norm, ttest_ind,ttest_ind_from_stats,t
+from scipy.stats import norm,t
 from statsmodels.stats import weightstats
 from statsmodels.stats import proportion
 import math
 from IPython.core.display import HTML
-
-def ttest(pA,pB,nA,nB,sA,sB,sig_level=0.05, alternative = 'two.sided'):          
-    n = nA+nB
-    p_diff = pA-pB
-    p_up = (pA/pB-1)*100
-    stderr = np.sqrt(sA**2/nA+sB**2/nB)
-    df = (sA**2/nA + sB**2/nB)**2 / ((sA**2/nA)**2 / (nA-1) + (sB**2/nB)**2 / (nB-1))
-    t,p = ttest_ind_from_stats(pA,sA,nA,
-                               pB,sB,nB,
-                               equal_var=False)  
-    if (alternative == 'two.sided' and p <= sig_level) or (alternative == 'greater' and p/2 <= sig_level and t>0) or (alternative == 'less' and p/2 <= sig_level and t<0):
-        txt = '***'
-    else:
-        txt = ''
-    return (p_diff,p_up,txt)
 
 def z_test_ci(mu,std,n=1,sig_level=0.05,tail='two.sided'):
     if tail=='two.sided':
@@ -160,7 +145,33 @@ def z_test(data_frame,variant_column,control_label,variant_label,kpi_name,
     """
     Input:
     =========
-    #labelA='Control',labelB='Variation'
+    #data_frame: Data frame for your test with each row is an observation.
+    Example: You want to test average WEIGHT between group "A" and group "control"
+    the data frame should look like:
+        +----------+----------------+----------------------+----------------------+
+        |   index  |  variant_type  |  weight_gram         |  height_cm           |
+        |----------+----------------+----------------------+----------------------|
+        |  1       |   A            |  100.5               |  50                  |
+        |----------+----------------+----------------------+----------------------+
+        |  2       |   control      |  112.9               |  50                  |
+        |----------+----------------+----------------------+----------------------+
+        |  3       |   control      |  102.5               |  50                  |
+        |----------+----------------+----------------------+----------------------+
+        |  4       |   A            |  132.7               |  50                  |
+        |----------+----------------+----------------------+----------------------+
+    
+    #variant_column: The column contains the info of which variant the observation falls into
+    In the above example it should be "variant_type"
+
+    #control_label: Value of the control group.
+    In the above example it should be "control"
+
+    #variant_label: Value of the Variant lable.
+    In the above example it should be "A"
+
+    #kpi_name: The column name of the easurement you want to evaluate.
+    In the above example it should be "weight_gram"
+
     
     Method:
     =========
@@ -226,24 +237,39 @@ def z_proportion_test(data_frame,variant_column,control_label,variant_label,kpi_
                 alternative,diff_value = 0, sig_level=0.05,show_plot=False,show_p_value=False,show_alpha=False
                 #labelA='Control',labelB='Variation'
           ):
-                
-#                 pA,pB,nA,nB,sA,sB,alternative,
-#                 show_plot=False,sig_level=0.05,
-#                 show_alpha=False,show_p_value=False,
-#                 labelA='Control',labelB='Variation'):
-    """
-    Example:
     
-    pA = 0.02;pB = 0.0212;
-    nA = 80000;nB = 80000;
-    sA=0.000495;sB=0.000509;
-    alternative='two.sided'
-    z_prop_test(pA,pB,nA,nB,sA,sB,alternative,show_plot=True,
-                sig_level=0.05,show_alpha=True,show_p_value=True,
-                labelA='Group A',labelB='Group B')
     """
-    # z_prop_test(main_dt, "original", "Variant B", "bvs", 1, "larger", 0.05)
-    # df = main_dt.groupby(['x'])['y'].sum()
+    Input:
+    =========
+    #data_frame: Data frame for your test with each row is an observation.
+    Example: You want to test converstion rate between group "A" and group "control"
+    the data frame should look like:
+        +----------+----------------+----------------------+----------------------+
+        |   index  |  variant_type  |  converted_1_0       |  height_cm           |
+        |----------+----------------+----------------------+----------------------|
+        |  1       |   A            |  1                   |  50                  |
+        |----------+----------------+----------------------+----------------------+
+        |  2       |   control      |  0                   |  50                  |
+        |----------+----------------+----------------------+----------------------+
+        |  3       |   control      |  0                   |  50                  |
+        |----------+----------------+----------------------+----------------------+
+        |  4       |   A            |  1                   |  50                  |
+        |----------+----------------+----------------------+----------------------+
+    
+    #variant_column: The column contains the info of which variant the observation falls into
+    In the above example it should be "variant_type"
+
+    #control_label: Value of the control group.
+    In the above example it should be "control"
+
+    #variant_label: Value of the Variant lable.
+    In the above example it should be "A"
+
+    #kpi_name: The column name of the easurement you want to evaluate.
+    In the above example it should be "converted_1_0"
+
+
+    """
     
     control = data_frame.query('{} == "{}"'.format(variant_column,control_label))[[kpi_name]]
 
