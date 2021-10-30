@@ -129,4 +129,70 @@ def setting_table(sig_level,alternative,labelA,labelB,diff_value):
     <table>""" +setting_table+ "</table>"
     display(HTML(main_table_html), metadata=dict(isolated=True))
 
+def z_test(data_frame,variant_column,control_label,variant_label,kpi_name,
+                alternative,diff_value = 0, sig_level=0.05,show_plot=False,show_p_value=False,show_alpha=False
+          ):
+    """
+    Input:
+    =========
+    #labelA='Control',labelB='Variation'
+    
+    Method:
+    =========
 
+    """
+    
+    control = data_frame.query('{} == "{}"'.format(variant_column,control_label))[[kpi_name]]
+
+    variant = data_frame.query('{} == "{}"'.format(variant_column,variant_label))[[kpi_name]]
+    labelA = control_label
+    labelB = variant_label
+    meanA = control.mean()[0]
+    meanB = variant.mean()[0]
+    nA = control.count()[0]
+    nB = variant.count()[0]
+    sA = (control.std()/math.sqrt(nA))[0]
+    sB = (variant.std()/math.sqrt(nB))[0]
+    
+    color =  ['#428bca','#555555']  
+    stderr = np.sqrt(sA**2+sB**2)
+    
+    ### Report Reading ###
+    alternative_dict = {'two.sided':'two-sided',
+                        'less':'smaller',
+                        'greater':'larger'}
+    
+    z,p = [k[0] for k in weightstats.ztest(control, variant, value=diff_value, alternative=alternative)]
+
+    #No Binomial Correction
+    power = 'NaN'   
+    ### Plot Title ###
+    display(HTML("<center><h2>Two Mean Z-Test</h2> <br> for {} and {}</center>".format(labelA,labelB)))
+    display(HTML("""<hr style="border-top: 2px double #8c8b8b";/> """))
+    setting_table(sig_level,alternative,labelA,labelB,diff_value)
+    if show_plot:
+        ## Prepare ploting ###
+        fig = plt.figure(figsize=(16,4),constrained_layout=True)
+        spec = fig.add_gridspec(ncols=2,nrows=1,width_ratios=[4,10],height_ratios=[4])
+        ax1 = fig.add_subplot(spec[0,0])
+        ax1.set_title("KPI Value and Confidence Interval",fontsize='xx-large')
+        ax2 = fig.add_subplot(spec[0,1],facecolor='white')
+        ax2.set_title("Expected Distribution",fontsize='xx-large')
+        ### Plot result ###
+        mu_dict =   {labelA:meanA,labelB:meanB}
+        data_dict = {labelA:z_test_ci(meanA,sA,nA,sig_level,tail=alternative),
+                     labelB:(z_test_ci(meanB,sB,nB,sig_level,tail=alternative))}
+        plot_vbar_result(ax1,data_dict,mu_dict)
+        ### Plot Hypothesis ####
+        display(HTML("<hr><center><h3>Distribution Plot</h3></center>"))
+        plot_norm_dist(ax2,meanA,sA,nA,label=labelA,with_CI=True,tail=alternative,color=color[0])
+        plot_norm_dist(ax2,meanB,sB,nB,label=labelB,tail=alternative,color=color[1])
+        if show_alpha:
+            plot_show_alpha(ax2,meanA,sA,nA,sig_level=sig_level,tail=alternative,color=color[0],test_type='z-test')
+        plt.legend(loc='best')
+        plt.show()
+    ### Plot Table ###
+    result_table(pA=meanA,pB=meanB,power=power,p=p,tscore=z,sA=sA,sB=sB,
+                 stderr=stderr,nA=nA,nB=nB,df=None,sig_level=sig_level)
+    display(HTML("<center><i>*** : statistical significant</i></center>"))
+    display(HTML("""<hr style="border-top: 2px double #8c8b8b";/> """))
