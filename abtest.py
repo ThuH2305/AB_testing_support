@@ -129,6 +129,31 @@ def setting_table(sig_level,alternative,labelA,labelB,diff_value):
     <table>""" +setting_table+ "</table>"
     display(HTML(main_table_html), metadata=dict(isolated=True))
 
+def result_table(pA=1,pB=1,power=1,p=1,tscore=1,sA=1,sB=1,stderr=1,nA=1,nB=1,df=1,sig_level=0.05):
+    sig = ""
+    if p<=sig_level: 
+        sig = " (<{})".format(sig_level)
+        star = "***"
+    else:  
+        sig = " (>{})".format(sig_level)
+        star = ""
+    kpi_table = """<tr><th>μA</th><th>μB</th><th>Uplift</th></tr>
+                <tr><td>{}</td><td>{}</td><td>{}%{}</td></tr>""".format(round(pA,5),round(pB,5),round((pB-pA)/pA*100,2),star)
+    n_table = """<tr><th>Sample Size A</th><th>Sample Size B</th></tr>
+                <tr><td>{}</td><td>{}</td></tr>""".format(nA,nB, round(df,5) if df!=None else 'NaN')
+    result_table = """<tr><th>p value</h5></th><th>t-Score/z-score</th></tr>
+                <tr><td>{}</td><td>{}</td></tr>""".format(str(round(p,5)) + sig +star,round(tscore,5))
+    
+    main_table_html = """
+    <style>table {width: 100%;}
+    td {text-align: center;}
+    tr:hover {background-color: #f5f5f5;}
+    </style>
+    <hr>
+    <center><h3>Test Statistics</h3></center>
+    <table>""" + kpi_table + result_table + n_table + "</table>"
+    display(HTML(main_table_html), metadata=dict(isolated=True))
+    
 def z_test(data_frame,variant_column,control_label,variant_label,kpi_name,
                 alternative,diff_value = 0, sig_level=0.05,show_plot=False,show_p_value=False,show_alpha=False
           ):
@@ -193,6 +218,88 @@ def z_test(data_frame,variant_column,control_label,variant_label,kpi_name,
         plt.show()
     ### Plot Table ###
     result_table(pA=meanA,pB=meanB,power=power,p=p,tscore=z,sA=sA,sB=sB,
+                 stderr=stderr,nA=nA,nB=nB,df=None,sig_level=sig_level)
+    display(HTML("<center><i>*** : statistical significant</i></center>"))
+    display(HTML("""<hr style="border-top: 2px double #8c8b8b";/> """))
+
+def z_proportion_test(data_frame,variant_column,control_label,variant_label,kpi_name,
+                alternative,diff_value = 0, sig_level=0.05,show_plot=False,show_p_value=False,show_alpha=False
+                #labelA='Control',labelB='Variation'
+          ):
+                
+#                 pA,pB,nA,nB,sA,sB,alternative,
+#                 show_plot=False,sig_level=0.05,
+#                 show_alpha=False,show_p_value=False,
+#                 labelA='Control',labelB='Variation'):
+    """
+    Example:
+    
+    pA = 0.02;pB = 0.0212;
+    nA = 80000;nB = 80000;
+    sA=0.000495;sB=0.000509;
+    alternative='two.sided'
+    z_prop_test(pA,pB,nA,nB,sA,sB,alternative,show_plot=True,
+                sig_level=0.05,show_alpha=True,show_p_value=True,
+                labelA='Group A',labelB='Group B')
+    """
+    # z_prop_test(main_dt, "original", "Variant B", "bvs", 1, "larger", 0.05)
+    # df = main_dt.groupby(['x'])['y'].sum()
+    
+    control = data_frame.query('{} == "{}"'.format(variant_column,control_label))[[kpi_name]]
+
+    variant = data_frame.query('{} == "{}"'.format(variant_column,variant_label))[[kpi_name]]
+    labelA = control_label
+    labelB = variant_label
+    
+    cA = control.sum()[0]
+    cB = variant.sum()[0]
+    nA = control.count()[0]
+    nB = variant.count()[0]
+    pA = (cA/nA)
+    pB = (cB/nB)
+    count = [cA,cB]
+    nobs = [nA,nB]
+    sA = math.sqrt(pA*(1-pA)/nA)
+    sB = math.sqrt(pB*(1-pB)/nB)
+    
+    color =  ['#428bca','#555555']  
+    stderr = np.sqrt(sA**2+sB**2)
+    ### Report Reading ###
+    alternative_dict = {'two.sided':'two-sided',
+                        'less':'smaller',
+                        'greater':'larger'}
+    
+    z,p = proportion.proportions_ztest(count, nobs, value=diff_value, alternative=alternative)
+    
+    #No Binomial Correction
+    power = 'NaN'   
+    ### Plot Title ###
+    display(HTML("<center><h2>Two Proportion Z-Test</h2> <br> for {} and {}</center>".format(labelA,labelB)))
+    display(HTML("""<hr style="border-top: 2px double #8c8b8b";/> """))
+    setting_table(sig_level,alternative,labelA,labelB,diff_value)
+    if show_plot:
+        ## Prepare ploting ###
+        fig = plt.figure(figsize=(16,4),constrained_layout=True)
+        spec = fig.add_gridspec(ncols=2,nrows=1,width_ratios=[4,10],height_ratios=[4])
+        ax1 = fig.add_subplot(spec[0,0])
+        ax1.set_title("KPI Value and Confidence Interval",fontsize='xx-large')
+        ax2 = fig.add_subplot(spec[0,1],facecolor='white')
+        ax2.set_title("Expected Distribution",fontsize='xx-large')
+        ### Plot result ###
+        mu_dict =   {labelA:pA,labelB:pB}
+        data_dict = {labelA:z_test_ci(pA,sA,nA,sig_level,tail=alternative),
+                     labelB:(z_test_ci(pB,sB,nB,sig_level,tail=alternative))}
+        plot_vbar_result(ax1,data_dict,mu_dict)
+        ### Plot Hypothesis ####
+        display(HTML("<hr><center><h3>Distribution Plot</h3></center>"))
+        plot_norm_dist(ax2,pA,sA,nA,label=labelA,with_CI=True,tail=alternative,color=color[0])
+        plot_norm_dist(ax2,pB,sB,nB,label=labelB,tail=alternative,color=color[1])
+        if show_alpha:
+            plot_show_alpha(ax2,pA,sA,nA,sig_level=sig_level,tail=alternative,color=color[0],test_type='z-test')
+        plt.legend(loc='best')
+        plt.show()
+    ### Plot Table ###
+    result_table(pA=pA,pB=pB,power=power,p=p,tscore=z,sA=sA,sB=sB,
                  stderr=stderr,nA=nA,nB=nB,df=None,sig_level=sig_level)
     display(HTML("<center><i>*** : statistical significant</i></center>"))
     display(HTML("""<hr style="border-top: 2px double #8c8b8b";/> """))
