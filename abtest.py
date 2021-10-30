@@ -35,3 +35,19 @@ def t_test_ci(mu,std,df,sig_level=0.05,tail='two.sided'):
         sig_level = sig_level/2
     left,right = t.interval(1-sig_level,df,loc=mu,scale=std)
     return (left,right)
+
+def plot_CI(ax,mu,s,df=1,tail='two.sided',sig_level=0.05,color='grey',test_type='z-test'):
+    if test_type=='t-test':
+        left,right = t_test_ci(mu,s,df,sig_level,tail=tail)  
+    else:
+        left,right = z_test_ci(mu,s,sig_level,tail=tail)
+    ax.axvline(left, c=color, linestyle='--', alpha=0.5)
+    ax.axvline(right, c=color, linestyle='--', alpha=0.5)
+
+def plot_norm_dist(ax,mu,std,n=1,with_CI=False,sig_level=0.05,label=None,tail='two.sided',color=None):
+    x = np.linspace(mu-6*std,mu+6*std,1000)
+    y = norm(mu,std).pdf(x)
+    ax.plot(x,y,label=label,c=color)
+    ax.axvline(mu, c=color, linestyle='--', alpha=0.5)
+    if with_CI:
+        plot_CI(ax,mu,std,sig_level=sig_level,tail=tail,test_type='z-test')
