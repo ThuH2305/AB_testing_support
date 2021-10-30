@@ -1,17 +1,13 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from statsmodels.stats.proportion import proportions_ztest
 from scipy.stats import norm, ttest_ind,ttest_ind_from_stats,t
-
-def ztest(cA,cB,nA,nB,sig_level=0.5, alternative='two-sided'):
-    z,p = proportions_ztest([cA,cB],[nA,nB],alternative=alternative, prop_var=False)
-    if p <= sig_level:
-        t = '***'
-    else:
-        t = ''
-    diff = (cA/nA - cB/nB)*100
-    up = ((cA/nA)/(cB/nB)-1)*100
-    return (diff,up,t)
+from statsmodels.stats import weightstats
+from statsmodels.stats import proportion
+import math
+from IPython.core.display import HTML
 
 def ttest(pA,pB,nA,nB,sA,sB,sig_level=0.05, alternative = 'two.sided'):          
     n = nA+nB
@@ -27,4 +23,15 @@ def ttest(pA,pB,nA,nB,sA,sB,sig_level=0.05, alternative = 'two.sided'):
     else:
         txt = ''
     return (p_diff,p_up,txt)
-    
+
+def z_test_ci(mu,std,n=1,sig_level=0.05,tail='two.sided'):
+    if tail=='two.sided':
+        sig_level = sig_level/2
+    left,right = norm.interval(1-sig_level, loc=mu, scale=std)
+    return (left,right)
+
+def t_test_ci(mu,std,df,sig_level=0.05,tail='two.sided'):
+    if tail=='two.sided':
+        sig_level = sig_level/2
+    left,right = t.interval(1-sig_level,df,loc=mu,scale=std)
+    return (left,right)
